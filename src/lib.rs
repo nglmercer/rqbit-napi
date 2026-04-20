@@ -64,6 +64,26 @@ impl RqbitSession {
     }
 
     #[napi]
+    pub async fn add_torrent_buffer(&self, buffer: Buffer, options: Option<RqbitAddTorrentOptions>) -> Result<u32> {
+        let options = options.unwrap_or_default();
+        let rqbit_options = librqbit::AddTorrentOptions {
+            output_folder: options.output_folder,
+            overwrite: options.overwrite.unwrap_or(true),
+            ..Default::default()
+        };
+        let bytes = bytes::Bytes::from(buffer.as_ref().to_vec());
+        let response = self.inner.add_torrent(AddTorrent::from_bytes(bytes), Some(rqbit_options))
+            .await
+            .map_err(|e| Error::from_reason(format!("Failed to add torrent from buffer: {}", e)))?;
+        
+        match response {
+            librqbit::AddTorrentResponse::Added(id, _) => Ok(id as u32),
+            librqbit::AddTorrentResponse::AlreadyManaged(id, _) => Ok(id as u32),
+            _ => Err(Error::from_reason("Unexpected response from add_torrent_buffer")),
+        }
+    }
+
+    #[napi]
     pub async fn get_torrent_stats(&self, index: u32) -> Result<Option<TorrentStats>> {
         if let Some(handle) = self.inner.get(librqbit::api::TorrentIdOrHash::Id(index as usize)) {
             let stats = handle.stats();
