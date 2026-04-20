@@ -1,28 +1,27 @@
 {
-  "name": "napi-template-bun",
+  "name": "rqbit-napi",
   "version": "1.0.0",
-  "description": "Template for NAPI (Node-API) native addons with Bun runtime",
+  "description": "A Bun/TS wrapper around librqbit",
   "keywords": [
     "napi",
     "node-addon",
     "native",
     "rust",
-    "bun",
-    "template",
-    "starter"
+    "torrent",
+    "rqbit"
   ],
-  "homepage": "https://github.com/your-username/your-repo#readme",
+  "homepage": "https://github.com/nglmercer/rqbit-napi#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/your-repo.git"
+    "url": "git+https://github.com/nglmercer/rqbit-napi.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/your-repo/issues"
+    "url": "https://github.com/nglmercer/rqbit-napi/issues"
   },
   "license": "MIT",
   "author": {
-    "name": "Your Name",
-    "email": "your.email@example.com"
+    "name": "nglmercer",
+    "email": "nglmercer@gmail.com"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -44,6 +43,7 @@
     "clean": "napi clean && cargo clean",
     "test": "bun test",
     "dev": "bun run --watch examples/dev.ts",
+    "server": "bun examples/server.ts",
     "type-check": "tsc --noEmit",
     "format": "bun run --filter ./examples --filter ./scripts format",
     "lint": "rustup run stable cargo clippy -- -D warnings",

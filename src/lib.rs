@@ -96,6 +96,30 @@ impl RqbitSession {
             torrents.map(|(id, _)| id as u32).collect()
         })
     }
+
+    #[napi]
+    pub async fn delete_torrent(&self, index: u32, delete_files: bool) -> Result<bool> {
+        self.inner.delete(librqbit::api::TorrentIdOrHash::Id(index as usize), delete_files).await
+            .map_err(|e| Error::from_reason(format!("Failed to delete: {}", e)))?;
+        Ok(true)
+    }
+
+    #[napi]
+    pub fn get_session_stats(&self) -> RqbitSessionStats {
+        let stats = self.inner.stats_snapshot();
+        RqbitSessionStats {
+            fetched_bytes: stats.fetched_bytes as i64,
+            uploaded_bytes: stats.uploaded_bytes as i64,
+            download_speed: stats.download_speed.mbps,
+            upload_speed: stats.upload_speed.mbps,
+            uptime_seconds: stats.uptime_seconds as i64,
+        }
+    }
+
+    #[napi]
+    pub async fn stop(&self) {
+        self.inner.stop().await;
+    }
 }
 
 #[napi(object)]
@@ -107,4 +131,13 @@ pub struct TorrentStats {
     pub uploaded_bytes: i64,
     pub download_speed: f64,
     pub upload_speed: f64,
+}
+
+#[napi(object)]
+pub struct RqbitSessionStats {
+    pub fetched_bytes: i64,
+    pub uploaded_bytes: i64,
+    pub download_speed: f64,
+    pub upload_speed: f64,
+    pub uptime_seconds: i64,
 }
