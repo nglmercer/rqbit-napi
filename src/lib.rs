@@ -115,6 +115,17 @@ impl RqbitSession {
     }
 
     #[napi]
+    pub async fn wait_until_initialized(&self, index: u32) -> Result<bool> {
+        if let Some(handle) = self.inner.get(librqbit::api::TorrentIdOrHash::Id(index as usize)) {
+            handle.wait_until_initialized().await
+                .map_err(|e| Error::from_reason(format!("Failed to wait: {}", e)))?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    #[napi]
     pub async fn delete_torrent(&self, index: u32, delete_files: bool) -> Result<bool> {
         self.inner.delete(librqbit::api::TorrentIdOrHash::Id(index as usize), delete_files).await
             .map_err(|e| Error::from_reason(format!("Failed to delete: {}", e)))?;

@@ -11,7 +11,7 @@ describe("RqbitSession NAPI Tests", () => {
   beforeAll(async () => {
     // Use a fresh temp directory for every test run to avoid DHT persistence issues
     testDir = await mkdtemp(join(tmpdir(), "rqbit-test-"));
-    session = await RqbitSession.create(testDir);
+    session = await RqbitSession.create(testDir, { disableDht: false, disableDhtPersistence: true });
   });
 
   afterAll(async () => {
@@ -29,7 +29,7 @@ describe("RqbitSession NAPI Tests", () => {
 
   test("Should add a torrent", async () => {
     // Using a tiny torrent for faster testing if possible, or just a magnet
-    const magnet = "magnet:?xt=urn:btih:cab507494d02ebb1178b38f2e9d7be299c86b862&dn=ubuntu-22.04.1-desktop-amd64.iso";
+    const magnet = "magnet:?xt=urn:btih:cab507494d02ebb1178b38f2e9d7be299c86b862&dn=ubuntu-22.04.1-desktop-amd64.iso&tr=https%3A%2F%2Ftorrent.ubuntu.com%3A443%2Fannounce";
     const id = await session.addTorrent(magnet);
     expect(typeof id).toBe("number");
     expect(id).toBeGreaterThanOrEqual(0);
@@ -61,6 +61,7 @@ describe("RqbitSession NAPI Tests", () => {
     const ids = session.listTorrents();
     const id = ids[0];
     
+    await session.waitUntilInitialized(id);
     const paused = await session.pauseTorrent(id);
     expect(paused).toBe(true);
     
