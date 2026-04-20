@@ -25,9 +25,8 @@ const server = Bun.serve({
 
     // POST /stop - Graceful shutdown
     if (path === "/stop" && method === "POST") {
-        await session.stop();
-        setTimeout(() => process.exit(0), 1000);
-        return Response.json({ success: true });
+      await session.stop();
+      return Response.json({ success: true });
     }
 
     // GET /torrents - List all torrents
