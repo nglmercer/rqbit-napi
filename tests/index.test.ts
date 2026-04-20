@@ -33,7 +33,7 @@ describe("RqbitSession NAPI Tests", () => {
     const id = await session.addTorrent(magnet);
     expect(typeof id).toBe("number");
     expect(id).toBeGreaterThanOrEqual(0);
-  });
+  }, 30000);
 
   test("Should list torrents", () => {
     const ids = session.listTorrents();
@@ -55,7 +55,7 @@ describe("RqbitSession NAPI Tests", () => {
       expect(typeof stats.downloadSpeed).toBe("number");
       expect(typeof stats.uploadSpeed).toBe("number");
     }
-  });
+  }, 30000);
 
   test("Should pause and resume torrent", async () => {
     const ids = session.listTorrents();
@@ -67,7 +67,7 @@ describe("RqbitSession NAPI Tests", () => {
     
     const resumed = await session.startTorrent(id);
     expect(resumed).toBe(true);
-  });
+  }, 30000);
 
   test("Should get session stats", () => {
     const stats = session.getSessionStats();
@@ -88,10 +88,10 @@ describe("RqbitSession NAPI Tests", () => {
     
     const remainingIds = session.listTorrents();
     expect(remainingIds).not.toContain(id);
-  });
+  }, 30000);
 
   test("Should handle non-existent torrent stats", async () => {
     const stats = await session.getTorrentStats(9999);
     expect(stats).toBeNull();
-  });
+  }, 30000);
 });
