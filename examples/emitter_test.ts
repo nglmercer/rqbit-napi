@@ -35,7 +35,6 @@ async function main() {
     console.log("Stopping session...");
     await session.stop();
     console.log("Done.");
-    process.exit(0);
   }, 10000);
 }
 

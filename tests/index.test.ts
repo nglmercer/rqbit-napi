@@ -91,13 +91,23 @@ describe("RqbitSession Comprehensive Tests", () => {
     }, 10000);
 
     test("Should be able to add and immediately list a torrent", async () => {
-      const id = await session.addTorrent(MAGNET_LINKS[1]);
+      // Use a .torrent buffer instead of a magnet link so metadata is available
+      // immediately — addTorrent(magnet) blocks until tracker/DHT resolves metadata
+      // which can easily exceed 60 seconds for less popular torrents.
+      const TORRENT_URL = "https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso.torrent";
+      const response = await fetch(TORRENT_URL);
+      if (!response.ok) {
+        console.warn("Skipping concurrent add test: could not fetch torrent file");
+        return;
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const id = await session.addTorrentBuffer(buffer, { paused: true });
       try {
         expect(session.listTorrents()).toContain(id);
       } finally {
         await session.deleteTorrent(id, true);
       }
-    }, 60000);
+    }, 30000);
 
     test("Should add a torrent via buffer (.torrent file)", async () => {
       // Use a small torrent file from a reliable source

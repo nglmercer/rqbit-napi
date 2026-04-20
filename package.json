@@ -1,6 +1,6 @@
 {
   "name": "rqbit-napi",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "A Bun/TS wrapper around librqbit",
   "keywords": [
     "napi",
@@ -42,7 +42,7 @@
     "build:all": "bun run scripts/build_multiplatform.ts",
     "build:debug": "napi build --platform",
     "clean": "napi clean && cargo clean",
-    "test": "bun test",
+    "test": "bun test tests/",
     "dev": "bun run --watch examples/dev.ts",
     "server": "bun examples/server.ts",
     "type-check": "tsc --noEmit",
