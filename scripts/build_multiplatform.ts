@@ -35,7 +35,7 @@ const targets = [
   { target: "aarch64-pc-windows-msvc", xwinDirect: true, apple: false },
   { target: "x86_64-apple-darwin", cross: true, apple: true },
   { target: "aarch64-apple-darwin", cross: true, apple: true },
-  { target: "aarch64-unknown-linux-gnu", napiCross: true, apple: false },
+  { target: "aarch64-unknown-linux-gnu", cross: true, apple: false },
   { target: "x86_64-unknown-linux-gnu", native: true, apple: false },
 ] as const;
 
@@ -107,7 +107,7 @@ for (const cfg of targets) {
         results.push({ target, success: false });
         continue;
       } else {
-        // Windows / other cross targets (cargo-xwin)
+        // Linux / Windows / other cross targets (cargo-zigbuild or cargo-xwin)
         await $`npx napi build --release --target ${target} --cross-compile --platform`;
       }
     }
