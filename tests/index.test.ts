@@ -35,6 +35,22 @@ describe("RqbitSession NAPI Tests", () => {
     expect(id).toBeGreaterThanOrEqual(0);
   }, 30000);
 
+  test("Should add a torrent via buffer (.torrent file)", async () => {
+    // Fetch a torrent file
+    const response = await fetch("https://releases.ubuntu.com/22.04.1/ubuntu-22.04.1-desktop-amd64.iso.torrent");
+    expect(response.ok).toBe(true);
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const id = await session.addTorrentBuffer(buffer);
+    expect(typeof id).toBe("number");
+    expect(id).toBeGreaterThanOrEqual(0);
+
+    // Clean it up immediately to avoid duplicate IDs or conflicts with other tests
+    await session.deleteTorrent(id, true);
+  }, 30000);
+
   test("Should list torrents", () => {
     const ids = session.listTorrents();
     expect(Array.isArray(ids)).toBe(true);
