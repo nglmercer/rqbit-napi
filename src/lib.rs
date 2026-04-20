@@ -15,11 +15,28 @@ pub struct RqbitAddTorrentOptions {
     pub overwrite: Option<bool>,
 }
 
+#[napi(object)]
+#[derive(Default)]
+pub struct RqbitSessionOptions {
+    pub disable_dht: Option<bool>,
+    pub disable_dht_persistence: Option<bool>,
+}
+
 #[napi]
 impl RqbitSession {
     #[napi(factory)]
-    pub async fn create(download_path: String) -> Result<Self> {
-        let session = Session::new(download_path.into())
+    pub async fn create(download_path: String, options: Option<RqbitSessionOptions>) -> Result<Self> {
+        let mut rqbit_opts = librqbit::SessionOptions::default();
+        if let Some(opts) = options {
+            if let Some(disable_dht) = opts.disable_dht {
+                rqbit_opts.disable_dht = disable_dht;
+            }
+            if let Some(disable_dht_persistence) = opts.disable_dht_persistence {
+                rqbit_opts.disable_dht_persistence = disable_dht_persistence;
+            }
+        }
+        
+        let session = Session::new_with_opts(download_path.into(), rqbit_opts)
             .await
             .map_err(|e| Error::from_reason(format!("Failed to create session: {}", e)))?;
         Ok(RqbitSession {
