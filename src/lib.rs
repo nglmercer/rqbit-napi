@@ -1,111 +1,101 @@
+use std::sync::Arc;
+use librqbit::{Session, AddTorrent, AddTorrentOptions};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-// Simple enum for message types
 #[napi]
-pub enum MessageType {
-    Info,
-    Warning,
-    Error,
-    Success,
+pub struct RqbitSession {
+    inner: Arc<Session>,
 }
 
-// Simple struct for messages
 #[napi]
-pub struct Message {
-    pub content: String,
-    pub rusttype: MessageType,
-}
-
-// Message constructor and methods
-#[napi]
-impl Message {
-    #[napi(constructor)]
-    pub fn new(content: String, rusttype: MessageType) -> Self {
-        Message { content, rusttype }
+impl RqbitSession {
+    #[napi(factory)]
+    pub async fn create(download_path: String) -> Result<Self> {
+        let session = Session::new(download_path.into())
+            .await
+            .map_err(|e| Error::from_reason(format!("Failed to create session: {}", e)))?;
+        Ok(RqbitSession {
+            inner: session,
+        })
     }
 
     #[napi]
-    pub fn get_type_string(&self) -> String {
-        match self.rusttype {
-            MessageType::Info => "INFO".to_string(),
-            MessageType::Warning => "WARN".to_string(),
-            MessageType::Error => "ERROR".to_string(),
-            MessageType::Success => "SUCCESS".to_string(),
+    pub async fn add_torrent(&self, url: String, output_folder: Option<String>) -> Result<u32> {
+        let options = AddTorrentOptions {
+            output_folder,
+            ..Default::default()
+        };
+        let response = self.inner.add_torrent(AddTorrent::from_url(url), Some(options))
+            .await
+            .map_err(|e| Error::from_reason(format!("Failed to add torrent: {}", e)))?;
+        
+        match response {
+            librqbit::AddTorrentResponse::Added(id, _) => Ok(id as u32),
+            librqbit::AddTorrentResponse::AlreadyManaged(id, _) => Ok(id as u32),
+            _ => Err(Error::from_reason("Unexpected response from add_torrent")),
         }
     }
 
     #[napi]
-    pub fn get_formatted(&self) -> String {
-        format!("[{}] {}", self.get_type_string(), self.content)
+    pub async fn get_torrent_stats(&self, index: u32) -> Result<Option<TorrentStats>> {
+        if let Some(handle) = self.inner.get(librqbit::api::TorrentIdOrHash::Id(index as usize)) {
+            let stats = handle.stats();
+            let (download_speed, upload_speed) = stats.live.as_ref()
+                .map(|l| (l.download_speed.mbps, l.upload_speed.mbps))
+                .unwrap_or((0.0, 0.0));
+            
+            Ok(Some(TorrentStats {
+                name: handle.name().unwrap_or_default(),
+                finished: stats.finished,
+                total_bytes: stats.total_bytes as i64,
+                downloaded_bytes: stats.progress_bytes as i64,
+                uploaded_bytes: stats.uploaded_bytes as i64,
+                download_speed,
+                upload_speed,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[napi]
+    pub async fn pause_torrent(&self, index: u32) -> Result<bool> {
+        if let Some(handle) = self.inner.get(librqbit::api::TorrentIdOrHash::Id(index as usize)) {
+            self.inner.pause(&handle).await
+                .map_err(|e| Error::from_reason(format!("Failed to pause: {}", e)))?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    #[napi]
+    pub async fn start_torrent(&self, index: u32) -> Result<bool> {
+        if let Some(handle) = self.inner.get(librqbit::api::TorrentIdOrHash::Id(index as usize)) {
+            self.inner.unpause(&handle).await
+                .map_err(|e| Error::from_reason(format!("Failed to start: {}", e)))?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    #[napi]
+    pub fn list_torrents(&self) -> Vec<u32> {
+        self.inner.with_torrents(|torrents| {
+            torrents.map(|(id, _)| id as u32).collect()
+        })
     }
 }
 
-// Simple synchronous functions
-#[napi]
-pub fn add(a: u32, b: u32) -> u32 {
-    a + b
-}
-
-#[napi]
-pub fn create_greeting(name: String, prefix: Option<String>) -> String {
-    match prefix {
-        Some(p) => format!("{} {}, welcome to NAPI!", p, name),
-        None => format!("Hello {}, welcome to NAPI!", name),
-    }
-}
-
-#[napi]
-pub fn process_numbers(numbers: Vec<f64>) -> Vec<f64> {
-    numbers.iter().map(|x| x * 2.0).collect()
-}
-
-// Simple async functions
-#[napi]
-pub async fn delayed_message(delay_ms: u32) -> String {
-    let duration = std::time::Duration::from_millis(delay_ms.into());
-    tokio::time::sleep(duration).await;
-    "Success after delay".to_string()
-}
-
-#[napi]
-pub async fn generate_sequence(start: u32, count: u32) -> Vec<u32> {
-    let mut result = Vec::new();
-    for i in 0..count {
-        result.push(start + i);
-        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-    }
-    result
-}
-
-// Error handling example
-#[napi]
-pub fn divide_numbers(numerator: f64, denominator: f64) -> Result<f64> {
-    if denominator == 0.0 {
-        return Err(napi::Error::from_reason("Division by zero"));
-    }
-    Ok(numerator / denominator)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_add() {
-        assert_eq!(add(2, 3), 5);
-    }
-
-    #[test]
-    fn test_create_greeting() {
-        let result = create_greeting("World".to_string(), None);
-        assert_eq!(result, "Hello {}, welcome to NAPI!");
-    }
-
-    #[test]
-    fn test_process_numbers() {
-        let input = vec![1.0, 2.0, 3.0];
-        let output = process_numbers(input);
-        assert_eq!(output, vec![2.0, 4.0, 6.0]);
-    }
+#[napi(object)]
+pub struct TorrentStats {
+    pub name: String,
+    pub finished: bool,
+    pub total_bytes: i64,
+    pub downloaded_bytes: i64,
+    pub uploaded_bytes: i64,
+    pub download_speed: f64,
+    pub upload_speed: f64,
 }

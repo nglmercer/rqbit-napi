@@ -21,6 +21,8 @@ targets = [
 napi = { version = "3.8.2", features = ["napi9", "async"] }
 napi-derive = "3.5.1"
 chrono = "0.4"
+librqbit = "8.1.1"
+anyhow = "1.0"
 tokio = { version = "1", features = ["full"] }
 
 [build-dependencies]
