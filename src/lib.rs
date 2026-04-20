@@ -1,4 +1,7 @@
 use std::sync::Arc;
+use std::time::Duration;
+use std::num::NonZeroU32;
+use std::net::SocketAddr;
 use librqbit::{Session, AddTorrent};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -13,6 +16,8 @@ pub struct RqbitSession {
 pub struct RqbitAddTorrentOptions {
     pub output_folder: Option<String>,
     pub overwrite: Option<bool>,
+    pub paused: Option<bool>,
+    pub initial_peers: Option<Vec<String>>,
 }
 
 #[napi(object)]
@@ -20,6 +25,12 @@ pub struct RqbitAddTorrentOptions {
 pub struct RqbitSessionOptions {
     pub disable_dht: Option<bool>,
     pub disable_dht_persistence: Option<bool>,
+    pub enable_upnp: Option<bool>,
+    pub listen_port: Option<u16>,
+    pub peer_connect_timeout_ms: Option<u32>,
+    pub peer_read_write_timeout_ms: Option<u32>,
+    pub concurrent_init_limit: Option<u32>,
+    pub fastresume: Option<bool>,
 }
 
 #[napi]
@@ -34,6 +45,29 @@ impl RqbitSession {
             if let Some(disable_dht_persistence) = opts.disable_dht_persistence {
                 rqbit_opts.disable_dht_persistence = disable_dht_persistence;
             }
+            if let Some(enable_upnp) = opts.enable_upnp {
+                rqbit_opts.enable_upnp_port_forwarding = enable_upnp;
+            }
+            if let Some(port) = opts.listen_port {
+                rqbit_opts.listen_port_range = Some(port..port + 1);
+            }
+            if let Some(limit) = opts.concurrent_init_limit {
+                rqbit_opts.concurrent_init_limit = Some(limit as usize);
+            }
+            if let Some(fastresume) = opts.fastresume {
+                rqbit_opts.fastresume = fastresume;
+            }
+            
+            if opts.peer_connect_timeout_ms.is_some() || opts.peer_read_write_timeout_ms.is_some() {
+                let mut peer_opts = librqbit::PeerConnectionOptions::default();
+                if let Some(ms) = opts.peer_connect_timeout_ms {
+                    peer_opts.connect_timeout = Some(Duration::from_millis(ms as u64));
+                }
+                if let Some(ms) = opts.peer_read_write_timeout_ms {
+                    peer_opts.read_write_timeout = Some(Duration::from_millis(ms as u64));
+                }
+                rqbit_opts.peer_opts = Some(peer_opts);
+            }
         }
         
         let session = Session::new_with_opts(download_path.into(), rqbit_opts)
@@ -47,9 +81,17 @@ impl RqbitSession {
     #[napi]
     pub async fn add_torrent(&self, url: String, options: Option<RqbitAddTorrentOptions>) -> Result<u32> {
         let options = options.unwrap_or_default();
+        let initial_peers = options.initial_peers.as_ref().map(|peers| {
+            peers.iter()
+                .filter_map(|p| p.parse::<SocketAddr>().ok())
+                .collect::<Vec<_>>()
+        });
+
         let rqbit_options = librqbit::AddTorrentOptions {
-            output_folder: options.output_folder,
+            output_folder: options.output_folder.clone(),
             overwrite: options.overwrite.unwrap_or(true),
+            paused: options.paused.unwrap_or(false),
+            initial_peers,
             ..Default::default()
         };
         let response = self.inner.add_torrent(AddTorrent::from_url(url), Some(rqbit_options))
@@ -66,9 +108,17 @@ impl RqbitSession {
     #[napi]
     pub async fn add_torrent_buffer(&self, buffer: Buffer, options: Option<RqbitAddTorrentOptions>) -> Result<u32> {
         let options = options.unwrap_or_default();
+        let initial_peers = options.initial_peers.as_ref().map(|peers| {
+            peers.iter()
+                .filter_map(|p| p.parse::<SocketAddr>().ok())
+                .collect::<Vec<_>>()
+        });
+
         let rqbit_options = librqbit::AddTorrentOptions {
-            output_folder: options.output_folder,
+            output_folder: options.output_folder.clone(),
             overwrite: options.overwrite.unwrap_or(true),
+            paused: options.paused.unwrap_or(false),
+            initial_peers,
             ..Default::default()
         };
         let bytes = bytes::Bytes::from(buffer.as_ref().to_vec());
@@ -167,6 +217,12 @@ impl RqbitSession {
     #[napi]
     pub async fn stop(&self) {
         self.inner.stop().await;
+    }
+
+    #[napi]
+    pub fn update_limits(&self, download_bps: Option<u32>, upload_bps: Option<u32>) {
+        self.inner.ratelimits.set_download_bps(download_bps.and_then(NonZeroU32::new));
+        self.inner.ratelimits.set_upload_bps(upload_bps.and_then(NonZeroU32::new));
     }
 }
 
