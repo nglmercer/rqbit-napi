@@ -23,8 +23,29 @@ impl RqbitSession {
             if let Some(disable_dht) = opts.disable_dht {
                 rqbit_opts.disable_dht = disable_dht;
             }
+            // Handle DHT persistence: if the caller explicitly sets disable_dht_persistence,
+            // respect it. Otherwise, if a custom filename is given, use it; if neither is set,
+            // default to disabling persistence to avoid errors from the OS default cache dir.
             if let Some(disable_dht_persistence) = opts.disable_dht_persistence {
                 rqbit_opts.disable_dht_persistence = disable_dht_persistence;
+                if !disable_dht_persistence {
+                    // persistence is enabled — apply filename if provided
+                    if let Some(filename) = opts.dht_config_filename {
+                        rqbit_opts.dht_config = Some(librqbit::dht::PersistentDhtConfig {
+                            config_filename: Some(filename.into()),
+                            dump_interval: None,
+                        });
+                    }
+                }
+            } else if let Some(filename) = opts.dht_config_filename {
+                // caller gave a filename but didn't disable persistence — use it
+                rqbit_opts.dht_config = Some(librqbit::dht::PersistentDhtConfig {
+                    config_filename: Some(filename.into()),
+                    dump_interval: None,
+                });
+            } else {
+                // No explicit choice: disable persistence to avoid OS-dir failures
+                rqbit_opts.disable_dht_persistence = true;
             }
             if let Some(enable_upnp) = opts.enable_upnp {
                 rqbit_opts.enable_upnp_port_forwarding = enable_upnp;
@@ -38,8 +59,6 @@ impl RqbitSession {
             if let Some(fastresume) = opts.fastresume {
                 rqbit_opts.fastresume = fastresume;
             }
-            // DHT is enabled by default in librqbit::SessionOptions::default()
-            
             if opts.peer_connect_timeout_ms.is_some() || opts.peer_read_write_timeout_ms.is_some() {
                 let mut peer_opts = librqbit::PeerConnectionOptions::default();
                 if let Some(ms) = opts.peer_connect_timeout_ms {
@@ -50,7 +69,11 @@ impl RqbitSession {
                 }
                 rqbit_opts.peer_opts = Some(peer_opts);
             }
+        } else {
+            // No options passed at all: disable DHT persistence by default
+            rqbit_opts.disable_dht_persistence = true;
         }
+
         
         let session = Session::new_with_opts(download_path.into(), rqbit_opts)
             .await

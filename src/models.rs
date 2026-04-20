@@ -20,6 +20,10 @@ pub struct RqbitSessionOptions {
     pub peer_read_write_timeout_ms: Option<u32>,
     pub concurrent_init_limit: Option<u32>,
     pub fastresume: Option<bool>,
+    /// Path to the DHT persistence JSON file.
+    /// If not set and disable_dht_persistence is false, uses the OS default cache dir.
+    /// Set disable_dht_persistence = true to skip file-based DHT state entirely.
+    pub dht_config_filename: Option<String>,
 }
 
 #[napi(object)]
