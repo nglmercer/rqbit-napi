@@ -1,11 +1,18 @@
 use std::sync::Arc;
-use librqbit::{Session, AddTorrent, AddTorrentOptions};
+use librqbit::{Session, AddTorrent};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 #[napi]
 pub struct RqbitSession {
     inner: Arc<Session>,
+}
+
+#[napi(object)]
+#[derive(Default)]
+pub struct RqbitAddTorrentOptions {
+    pub output_folder: Option<String>,
+    pub overwrite: Option<bool>,
 }
 
 #[napi]
@@ -21,12 +28,14 @@ impl RqbitSession {
     }
 
     #[napi]
-    pub async fn add_torrent(&self, url: String, output_folder: Option<String>) -> Result<u32> {
-        let options = AddTorrentOptions {
-            output_folder,
+    pub async fn add_torrent(&self, url: String, options: Option<RqbitAddTorrentOptions>) -> Result<u32> {
+        let options = options.unwrap_or_default();
+        let rqbit_options = librqbit::AddTorrentOptions {
+            output_folder: options.output_folder,
+            overwrite: options.overwrite.unwrap_or(true),
             ..Default::default()
         };
-        let response = self.inner.add_torrent(AddTorrent::from_url(url), Some(options))
+        let response = self.inner.add_torrent(AddTorrent::from_url(url), Some(rqbit_options))
             .await
             .map_err(|e| Error::from_reason(format!("Failed to add torrent: {}", e)))?;
         
