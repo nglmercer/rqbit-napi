@@ -17,6 +17,7 @@ pub struct RqbitSession {
 impl RqbitSession {
     #[napi(factory)]
     pub async fn create(download_path: String, options: Option<RqbitSessionOptions>) -> Result<Self> {
+        tracing::info!(path = %download_path, "creating rqbit session");
         let mut rqbit_opts = librqbit::SessionOptions::default();
         if let Some(opts) = options {
             if let Some(disable_dht) = opts.disable_dht {
@@ -37,6 +38,7 @@ impl RqbitSession {
             if let Some(fastresume) = opts.fastresume {
                 rqbit_opts.fastresume = fastresume;
             }
+            // DHT is enabled by default in librqbit::SessionOptions::default()
             
             if opts.peer_connect_timeout_ms.is_some() || opts.peer_read_write_timeout_ms.is_some() {
                 let mut peer_opts = librqbit::PeerConnectionOptions::default();
@@ -52,7 +54,10 @@ impl RqbitSession {
         
         let session = Session::new_with_opts(download_path.into(), rqbit_opts)
             .await
-            .map_err(|e| Error::from_reason(format!("Failed to create session: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!(error = %e, "failed to create session");
+                Error::from_reason(format!("Failed to create session: {}", e))
+            })?;
         Ok(RqbitSession {
             inner: session,
         })
@@ -76,7 +81,10 @@ impl RqbitSession {
         };
         let response = self.inner.add_torrent(AddTorrent::from_url(url), Some(rqbit_options))
             .await
-            .map_err(|e| Error::from_reason(format!("Failed to add torrent: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!(error = %e, "failed to add torrent");
+                Error::from_reason(format!("Failed to add torrent: {}", e))
+            })?;
         
         match response {
             librqbit::AddTorrentResponse::Added(id, _) => Ok(id as u32),
@@ -104,7 +112,10 @@ impl RqbitSession {
         let bytes = bytes::Bytes::from(buffer.as_ref().to_vec());
         let response = self.inner.add_torrent(AddTorrent::from_bytes(bytes), Some(rqbit_options))
             .await
-            .map_err(|e| Error::from_reason(format!("Failed to add torrent from buffer: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!(error = %e, "failed to add torrent from buffer");
+                Error::from_reason(format!("Failed to add torrent from buffer: {}", e))
+            })?;
         
         match response {
             librqbit::AddTorrentResponse::Added(id, _) => Ok(id as u32),

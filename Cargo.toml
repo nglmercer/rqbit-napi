@@ -24,6 +24,8 @@ chrono = "0.4"
 anyhow = "1.0"
 bytes = "1.0"
 tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [target.'cfg(any(windows, target_vendor = "apple"))'.dependencies]
 librqbit = { version = "8.1.1", default-features = false, features = ["default-tls", "http-api-client"] }

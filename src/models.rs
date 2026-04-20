@@ -7,7 +7,6 @@ pub struct RqbitAddTorrentOptions {
     pub overwrite: Option<bool>,
     pub paused: Option<bool>,
     pub initial_peers: Option<Vec<String>>,
-    pub peer_limit: Option<u32>,
 }
 
 #[napi(object)]
@@ -21,7 +20,6 @@ pub struct RqbitSessionOptions {
     pub peer_read_write_timeout_ms: Option<u32>,
     pub concurrent_init_limit: Option<u32>,
     pub fastresume: Option<bool>,
-    pub peer_limit: Option<u32>,
 }
 
 #[napi(object)]
@@ -42,15 +40,4 @@ pub struct RqbitSessionStats {
     pub download_speed: f64,
     pub upload_speed: f64,
     pub uptime_seconds: i64,
-}
-
-#[napi(object)]
-pub struct PeerStats {
-    pub addr: String,
-    pub downloaded_bytes: i64,
-    pub uploaded_bytes: i64,
-    pub download_speed: f64,
-    pub upload_speed: f64,
-    pub connection_type: String,
-    pub state: String,
 }
