@@ -1,4 +1,4 @@
-import { RqbitSessionEmitter } from "../emitter";
+import { RqbitSessionEmitter } from "./emitter";
 import { join } from "path";
 import { tmpdir } from "os";
 

@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { RqbitSession, RqbitAddTorrentOptions, RqbitSessionOptions, TorrentStats } from "./index";
+import { RqbitSession, RqbitAddTorrentOptions, RqbitSessionOptions, TorrentStats } from "../index";
 
 export type TorrentEvent = "start" | "progress" | "done" | "error";
 
@@ -45,11 +45,11 @@ export class RqbitSessionEmitter extends EventEmitter {
   async addTorrent(url: string, options?: RqbitAddTorrentOptions): Promise<number> {
     const id = await this.session.addTorrent(url, options);
     this.activeTorrents.add(id);
-    
+
     // Attempt to get initial stats
     const stats = await this.session.getTorrentStats(id);
     this.emit("start", id, stats);
-    
+
     return id;
   }
 
@@ -79,7 +79,7 @@ export class RqbitSessionEmitter extends EventEmitter {
     for (const id of Array.from(this.activeTorrents)) {
       try {
         const stats = await this.session.getTorrentStats(id);
-        
+
         if (!stats) continue;
 
         if (stats.finished) {
@@ -87,12 +87,12 @@ export class RqbitSessionEmitter extends EventEmitter {
           this.activeTorrents.delete(id);
           this.previousProgress.delete(id);
         } else {
-          const percentage = stats.totalBytes > 0 
-            ? (stats.downloadedBytes / stats.totalBytes) * 100 
+          const percentage = stats.totalBytes > 0
+            ? (stats.downloadedBytes / stats.totalBytes) * 100
             : 0;
-          
+
           const prev = this.previousProgress.get(id) || -1;
-          
+
           // Emit progress if percentage changed or there's active downloading/uploading
           // To avoid spam, you might want to only emit if it changes by a certain amount,
           // but we'll emit on every active poll for smooth UI updates.

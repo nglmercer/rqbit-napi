@@ -78,6 +78,23 @@ bun run server
 - `DELETE /torrents/:id?deleteFiles=true` - Delete a torrent (and optionally its files).
 - `POST /stop` - Gracefully shutdown the server.
 
+## Event Emitter API
+
+For event-driven architectures, we provide an `EventEmitter` wrapper (`emitter.ts`) that polls the session automatically and emits real-time events.
+
+```typescript
+import { RqbitSessionEmitter } from "rqbit-napi/emitter";
+
+const session = await RqbitSessionEmitter.create("/downloads");
+
+session.on("start", (id, stats) => console.log(`Torrent ${id} started`));
+session.on("progress", (id, stats, percentage) => console.log(`${percentage}% done`));
+session.on("done", (id, stats) => console.log(`Torrent ${id} completed`));
+session.on("error", (id, err) => console.error(err));
+
+await session.addTorrent("magnet:...");
+```
+
 ## API Reference
 
 ### `RqbitSession`
